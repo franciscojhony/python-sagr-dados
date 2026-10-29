@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Baixador de XML de NF-e</title>
+<style>
+  :root{
+    --brand:#104376; --brand-dark:#0b2f54; --brand-light:#1a5a9e; --accent:#f0932b;
+    --surface:#f4f7fb; --card-bg:#ffffff; --text-primary:#101418; --text-secondary:#5b6672;
+    --text-muted:#8993a1; --border:#e4e9f0;
+    --shadow-sm:0 2px 8px rgba(16,67,118,0.08); --shadow-md:0 6px 20px rgba(16,67,118,0.14);
+    --shadow-lg:0 10px 30px rgba(16,67,118,0.20);
+    --ok:#13803f; --ok-bg:#e6f5ec; --warn:#a15c00; --warn-bg:#fff3de; --err:#c2271d; --err-bg:#fdeaea; --info-bg:#eaf1fd;
+  }
+  *{ box-sizing:border-box; }
+  html, body{ margin:0; padding:0; }
+  body{ font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--surface);
+    color: var(--text-primary); padding-bottom: 48px; font-size:15px; line-height:1.5; }
+  header.topbar{ background: linear-gradient(135deg, var(--brand) 0%, var(--brand-dark) 100%); color:#fff;
+    padding: 40px 40px 46px; box-shadow: var(--shadow-lg); text-align:center; }
+  header.topbar h1{ margin:0 0 8px; font-size:1.9rem; font-weight:700; letter-spacing:0.2px; }
+  header.topbar p{ margin:0; color: rgba(255,255,255,0.78); font-size:0.98rem; }
+  main{ max-width:1300px; margin:-20px auto 0; padding:0 40px; }
+  section.portfolio{ background: var(--card-bg); border-radius:16px; box-shadow: var(--shadow-lg);
+    padding:40px 44px 48px; margin-bottom:24px; }
+  .portfolio-title{ display:flex; flex-direction:column; align-items:center; gap:10px; margin-bottom:36px; }
+  .portfolio-title h2{ margin:0; display:flex; align-items:center; gap:12px; font-size:1.55rem; font-weight:800; color:var(--brand); }
+  .portfolio-title h2 svg{ width:30px; height:30px; color:var(--brand); }
+  .portfolio-title .underline{ width:200px; height:4px; border-radius:2px; background:var(--accent); }
+  .card-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:24px; }
+  .card{ position:relative; background:var(--card-bg); border:1px solid var(--border); border-left:4px solid var(--brand);
+    border-radius:12px; box-shadow:var(--shadow-sm); padding:26px 26px 28px; height:100%;
+    transition: box-shadow .18s ease, border-left-color .18s ease; }
+  .card:hover, .card:focus-within{ box-shadow:var(--shadow-md); border-left-color:var(--accent); }
+  .card h3{ margin:0 0 14px; display:flex; align-items:center; gap:10px; font-size:1.08rem; font-weight:700; color:var(--brand-dark); }
+  .card h3 svg{ width:22px; height:22px; color:var(--brand); flex:none; }
+  .card p.desc{ margin:0 0 14px; color:var(--text-secondary); font-size:0.92rem; line-height:1.55; }
+
+  label{ display:block; font-size:0.82rem; font-weight:600; color:var(--text-secondary); margin-bottom:4px; }
+  input[type=text], input[type=number], input[type=month], select{ width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px;
+    background:#fff; color:var(--text-primary); font:inherit; }
+  input:focus, select:focus, button:focus-visible{ outline:2px solid var(--brand-light); outline-offset:1px; }
+  .row{ display:flex; gap:12px; flex-wrap:wrap; } .row>*{ flex:1 1 140px; }
+  .hint{ font-size:0.82rem; color:var(--text-muted); margin-top:8px; line-height:1.5; }
+  button{ font:inherit; font-weight:600; cursor:pointer; border-radius:8px; border:1px solid var(--border);
+    background:#fff; color:var(--brand); padding:10px 18px; transition:.15s; }
+  button:hover:not(:disabled){ border-color:var(--brand); box-shadow:var(--shadow-sm); }
+  button:disabled{ opacity:.5; cursor:not-allowed; }
+  button.primary{ background:var(--brand); color:#fff; border-color:var(--brand); }
+  button.primary:hover:not(:disabled){ background:var(--brand-light); border-color:var(--brand-light); }
+  button.danger{ background:var(--err); color:#fff; border-color:var(--err); }
+  .drop{ border:2px dashed var(--border); border-radius:10px; padding:26px 14px; text-align:center; color:var(--text-secondary);
+    cursor:pointer; transition:.15s; font-size:0.92rem; }
+  .drop:hover, .drop.over{ border-color:var(--accent); background:#fff8ee; }
+  .drop b{ color:var(--brand); }
+  .file-ok{ display:flex; align-items:center; justify-content:space-between; gap:12px; background:var(--ok-bg);
+    border-radius:8px; padding:10px 12px; margin-bottom:12px; }
+  .file-ok .nm{ font-weight:700; word-break:break-all; font-size:0.92rem; } .file-ok small{ color:var(--text-secondary); }
+  .file-ok button{ padding:6px 12px; font-size:0.82rem; }
+  .pathrow{ display:flex; gap:8px; } .pathrow input{ flex:1; min-width:0; }
+
+  .toolbar{ margin-top:30px; border-top:1px solid var(--border); padding-top:26px; }
+  details{ margin:0 0 16px; } summary{ cursor:pointer; color:var(--brand); font-weight:600; font-size:0.9rem; }
+  details .row{ margin-top:14px; }
+  .notice{ background:var(--info-bg); border-left:4px solid var(--brand-light); border-radius:8px; padding:12px 16px;
+    font-size:0.9rem; color:var(--text-secondary); margin-bottom:16px; }
+  .err{ background:var(--err-bg); color:var(--err); border-radius:8px; padding:10px 14px; margin-bottom:14px; display:none; font-weight:600; }
+  .actions{ display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+  .chk{ display:flex; gap:8px; align-items:center; font-size:0.9rem; color:var(--text-secondary); margin:0; font-weight:500; }
+  .chk input{ width:auto; }
+  .pill{ font-size:0.75rem; font-weight:700; padding:4px 12px; border-radius:999px; background:var(--info-bg); color:var(--brand); }
+  .pill.ok{ background:var(--ok-bg); color:var(--ok); } .pill.warn{ background:var(--warn-bg); color:var(--warn); } .pill.err{ background:var(--err-bg); color:var(--err); }
+  .status-line{ display:flex; justify-content:center; margin:-20px 0 24px; }
+  .bar{ height:10px; background:var(--border); border-radius:99px; overflow:hidden; margin:0 0 20px; }
+  .bar>div{ height:100%; width:0; background:linear-gradient(90deg,var(--brand),var(--brand-light)); transition:width .4s; }
+  .stats{ display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:16px; margin-bottom:20px; }
+  .stat{ background:var(--card-bg); border:1px solid var(--border); border-left:4px solid var(--brand); border-radius:12px;
+    box-shadow:var(--shadow-sm); padding:14px 16px; }
+  .stat b{ display:block; font-size:1.6rem; color:var(--brand-dark); font-variant-numeric:tabular-nums; line-height:1.2; }
+  .stat span{ font-size:0.8rem; color:var(--text-secondary); }
+  .stat.k{ border-left-color:var(--ok); } .stat.k b{ color:var(--ok); }
+  .stat.f{ border-left-color:var(--err); } .stat.f b{ color:var(--err); }
+  .console{ background:#0f1b2b; color:#d7dee9; border-radius:12px; padding:14px 16px; height:280px; overflow:auto;
+    font:12.5px/1.6 ui-monospace,Consolas,Menlo,monospace; white-space:pre-wrap; word-break:break-all; box-shadow:var(--shadow-sm); }
+  .console .ok{ color:#5fd68f; } .console .erro{ color:#ff8b82; } .console .aviso{ color:#f6c667; }
+  .console .t{ opacity:.5; margin-right:8px; }
+  .fails{ margin-top:20px; font-size:0.88rem; color:var(--text-secondary); }
+  .fails table{ width:100%; border-collapse:collapse; margin-top:8px; }
+  .fails td, .fails th{ padding:7px 10px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top; }
+  .fails th{ color:var(--brand-dark); } .fails td.k{ font-family:ui-monospace,Consolas,monospace; word-break:break-all; }
+  footer.rodape{ text-align:center; color:var(--text-muted); font-size:0.82rem; margin-top:8px; }
+  footer.rodape a{ color:var(--text-muted); }
+  .hidden{ display:none!important; }
+
+  /* seletor de pastas */
+  .modal{ position:fixed; inset:0; background:rgba(11,47,84,.55); display:none; align-items:center; justify-content:center; padding:16px; z-index:10; }
+  .modal.on{ display:flex; }
+  .dlg{ background:#fff; border-radius:16px; width:min(660px,100%); max-height:86vh; display:flex; flex-direction:column; box-shadow:var(--shadow-lg); overflow:hidden; }
+  .dlg header{ padding:16px 22px; background:linear-gradient(135deg,var(--brand),var(--brand-dark)); color:#fff; font-weight:700; }
+  .dlg .cur{ padding:10px 22px; font-size:0.82rem; color:var(--text-secondary); word-break:break-all; border-bottom:1px solid var(--border); }
+  .dlg .body{ display:flex; min-height:240px; flex:1; overflow:hidden; }
+  .dlg .side{ width:150px; border-right:1px solid var(--border); padding:8px; overflow:auto; font-size:0.82rem; background:var(--surface); }
+  .dlg .list{ flex:1; overflow:auto; padding:6px; }
+  .item{ padding:7px 10px; border-radius:6px; cursor:pointer; font-size:0.9rem; word-break:break-all; }
+  .item:hover{ background:var(--info-bg); color:var(--brand-dark); }
+  .dlg footer{ display:flex; gap:8px; justify-content:space-between; padding:14px 22px; border-top:1px solid var(--border); flex-wrap:wrap; }
+
+
+  .tabs{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:22px; }
+  .tabs button{ background:rgba(255,255,255,.12); color:#fff; border:1px solid rgba(255,255,255,.28); padding:9px 22px; border-radius:999px; font-weight:600; }
+  .tabs button:hover:not(:disabled){ background:rgba(255,255,255,.22); border-color:#fff; box-shadow:none; }
+  .tabs button.on{ background:#fff; color:var(--brand); border-color:#fff; }
+  .row.full>*{ flex:1 1 100%; }
+  .mt{ margin-top:14px; }
+  .btn-sm{ padding:6px 12px; font-size:0.82rem; margin-top:10px; }
+
+  @media (max-width: 900px){ .card-grid{ grid-template-columns:repeat(2,1fr); } }
+  @media (max-width: 720px){
+    header.topbar{ padding:30px 20px 36px; } main{ padding:0 16px; }
+    section.portfolio{ padding:30px 20px 34px; } .card-grid{ grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <h1>Baixador de XML de NF-e</h1>
+  <p>Download de XML pela chave de acesso &middot; consultadanfe.com &rarr; importação no SISGI</p>
+  <nav class="tabs" aria-label="Etapas">
+    <button type="button" id="tabB" class="on">1 · Baixar XMLs</button>
+    <button type="button" id="tabS">2 · Importar no SISGI</button>
+  </nav>
+</header>
+
+<main>
+<div id="paneBaixar">
+  <section class="portfolio">
+    <div class="portfolio-title">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"></path></svg>
+        Configuração do Download
+      </h2>
+      <div class="underline"></div>
+    </div>
+
+    <div class="card-grid">
+      <div class="card">
+        <h3>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"></path><path d="M14 3v5h5M9 13h6M9 17h6"></path></svg>
+          1. Planilha
+        </h3>
+        <div id="dropArea" class="drop" tabindex="0" role="button">
+          <b>Clique para escolher</b> ou arraste o arquivo aqui<br><small>.xlsx, .xlsm ou .csv</small>
+        </div>
+        <input id="fileInput" type="file" accept=".xlsx,.xlsm,.csv" class="hidden">
+        <div id="fileInfo" class="hidden">
+          <div class="file-ok">
+            <div><div class="nm" id="fileName"></div><small id="fileMeta"></small></div>
+            <button id="btnTroca" type="button">Trocar</button>
+          </div>
+          <label for="coluna">Coluna da chave de acesso (44 dígitos)</label>
+          <select id="coluna"></select>
+          <div class="hint" id="colInfo"></div>
+        </div>
+        <div class="hint hidden" id="lendo">Lendo a planilha… planilhas grandes podem levar alguns segundos.</div>
+      </div>
+
+      <div class="card">
+        <h3>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"></path></svg>
+          2. Linhas a processar
+        </h3>
+        <div class="row">
+          <div><label for="inicio">Linha inicial</label><input id="inicio" type="number" min="1" value="1"></div>
+          <div><label for="fim">Linha final</label><input id="fim" type="number" min="1" placeholder="até o fim"></div>
+        </div>
+        <div class="hint" id="resumoLinhas">A linha 1 é a primeira nota (o cabeçalho não conta). A linha final é incluída. Rode em lotes pequenos (ex.: 1–50, depois 51–100) para evitar bloqueio do site.</div>
+      </div>
+
+      <div class="card">
+        <h3>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"></path></svg>
+          3. Pasta de destino
+        </h3>
+        <div class="pathrow">
+          <input id="pasta" type="text" placeholder="Caminho da pasta">
+          <button id="btnPasta" type="button">Procurar…</button>
+        </div>
+        <div class="hint">A pasta é criada se não existir. Notas já baixadas nela (&lt;chave&gt;.xml) são puladas.</div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <details>
+        <summary>Opções avançadas (pausas entre as notas)</summary>
+        <div class="row">
+          <div><label>Pausa entre notas — mín. (s)</label><input id="o_pmin" type="number" min="0" value="5"></div>
+          <div><label>Pausa entre notas — máx. (s)</label><input id="o_pmax" type="number" min="0" value="9"></div>
+          <div><label>Pausa longa a cada N notas</label><input id="o_lote" type="number" min="0" value="10"></div>
+        </div>
+        <div class="row">
+          <div><label>Pausa longa — mín. (s)</label><input id="o_lmin" type="number" min="0" value="30"></div>
+          <div><label>Pausa longa — máx. (s)</label><input id="o_lmax" type="number" min="0" value="60"></div>
+          <div><label>Tempo máx. do download (s)</label><input id="o_tmax" type="number" min="5" value="40"></div>
+        </div>
+      </details>
+      <div class="notice" id="aviso">
+        Ao executar, uma <b>janela do Google Chrome</b> vai abrir sozinha. Não a feche e evite usá-la.
+        Se aparecer a verificação anti-robô (Cloudflare), resolva você mesmo na janela — o programa continua depois.
+      </div>
+      <div class="err" id="erro"></div>
+      <div class="actions">
+        <button id="btnRun" class="primary" type="button">▶ Executar</button>
+        <button id="btnStop" class="danger hidden" type="button">■ Parar</button>
+        <label class="chk"><input id="simular" type="checkbox"> Apenas simular (não abre o Chrome nem baixa)</label>
+      </div>
+    </div>
+  </section>
+
+  <section class="portfolio hidden" id="progCard">
+    <div class="portfolio-title">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg>
+        Andamento
+      </h2>
+      <div class="underline"></div>
+    </div>
+    <div class="status-line"><span class="pill" id="status">—</span></div>
+    <div class="bar"><div id="barra"></div></div>
+    <div class="stats">
+      <div class="stat"><b id="sProc">0</b><span>processadas / <span id="sTotal">0</span></span></div>
+      <div class="stat k"><b id="sOk">0</b><span>baixadas</span></div>
+      <div class="stat"><b id="sEx">0</b><span>já existiam</span></div>
+      <div class="stat"><b id="sInv">0</b><span>chaves inválidas</span></div>
+      <div class="stat f"><b id="sFal">0</b><span>falhas</span></div>
+      <div class="stat"><b id="sTempo">0:00</b><span>tempo decorrido</span></div>
+    </div>
+    <div class="console" id="console" aria-live="polite"></div>
+    <div class="fails hidden" id="failsBox">
+      <b>Chaves que falharam</b> — execute de novo o mesmo intervalo para tentar só essas.
+      <table><thead><tr><th>Linha</th><th>Chave</th><th>Erro</th></tr></thead><tbody id="failsBody"></tbody></table>
+      <p><button id="btnCopiar" type="button">Copiar chaves</button></p>
+    </div>
+    <p class="actions" style="margin:18px 0 0"><button id="btnAbrir" type="button" class="hidden">📂 Abrir pasta dos XMLs</button></p>
+  </section>
+
+</div>
+
+<div id="paneSisgi" class="hidden">
+  <section class="portfolio">
+    <div class="portfolio-title">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"></path></svg>
+        Importar no SISGI
+      </h2>
+      <div class="underline"></div>
+    </div>
+    <div class="card-grid">
+      <div class="card">
+        <h3>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"></path></svg>
+          1. Pasta dos XMLs
+        </h3>
+        <div class="pathrow">
+          <input id="iPasta" type="text" placeholder="Caminho da pasta">
+          <button id="btnIPasta" type="button">Procurar…</button>
+        </div>
+        <button id="btnIUsar" type="button" class="btn-sm">Usar a pasta do download</button>
+        <div class="hint">O programa lê a data de emissão de cada XML e envia agrupando por mês (o SISGI só aceita notas do mês de competência). O que já foi enviado fica registrado no arquivo sisgi_importados.txt, nessa pasta.</div>
+      </div>
+      <div class="card">
+        <h3>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8L3 5Z"></path></svg>
+          2. Filtros
+        </h3>
+        <label for="iMes">Mês de competência (opcional)</label>
+        <input id="iMes" type="month">
+        <label for="iLimite" class="mt">Limite de arquivos (opcional)</label>
+        <input id="iLimite" type="number" min="1" placeholder="ex.: 40 para testar">
+        <div class="hint">Vazio = importa todos os meses e todos os arquivos pendentes.</div>
+      </div>
+      <div class="card">
+        <h3>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"></path></svg>
+          3. Sistema SISGI
+        </h3>
+        <label for="iUrl">Endereço da lista de despesas</label>
+        <input id="iUrl" type="text">
+        <label for="iLote" class="mt">Arquivos por lote (máx. 20)</label>
+        <input id="iLote" type="number" min="1" max="20" value="20">
+        <label class="chk mt"><input id="iReenviar" type="checkbox"> Reenviar também os já enviados</label>
+        <div class="hint">O endereço padrão é o de homologação (hmg). Troque se for importar na produção.</div>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="notice">
+        Ao executar, uma <b>janela do Google Chrome</b> abre no SISGI. <b>Faça o login você mesmo</b> nela — o programa continua sozinho quando a lista de despesas aparecer (até 5 minutos).
+        Ao final, um aviso aparece no Chrome: clique em OK (ou em Parar aqui) para fechá-lo.
+      </div>
+      <div class="err" id="iErro"></div>
+      <div class="actions">
+        <button id="iRun" class="primary" type="button">▶ Importar</button>
+        <button id="iStop" class="danger hidden" type="button">■ Parar</button>
+        <label class="chk"><input id="iSimular" type="checkbox"> Apenas simular (mostra o plano, sem abrir o Chrome nem enviar)</label>
+      </div>
+    </div>
+  </section>
+
+  <section class="portfolio hidden" id="iProg">
+    <div class="portfolio-title">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg>
+        Andamento da importação
+      </h2>
+      <div class="underline"></div>
+    </div>
+    <div class="status-line"><span class="pill" id="iStatus">—</span></div>
+    <div class="bar"><div id="iBarra"></div></div>
+    <div class="stats">
+      <div class="stat"><b id="iProc">0</b><span>processados / <span id="iTotal">0</span></span></div>
+      <div class="stat k"><b id="iOk">0</b><span>enviados</span></div>
+      <div class="stat"><b id="iEx">0</b><span>já enviados antes</span></div>
+      <div class="stat"><b id="iInv">0</b><span>sem data de emissão</span></div>
+      <div class="stat f"><b id="iFal">0</b><span>com erro</span></div>
+      <div class="stat"><b id="iTempo">0:00</b><span>tempo decorrido</span></div>
+    </div>
+    <div class="console" id="iConsole" aria-live="polite"></div>
+    <div class="fails hidden" id="iFailsBox">
+      <b>Arquivos com erro</b> — execute de novo para tentar só os que não foram registrados.
+      <table><thead><tr><th>Mês</th><th>Arquivo</th><th>Erro</th></tr></thead><tbody id="iFailsBody"></tbody></table>
+    </div>
+    <p class="actions" style="margin:18px 0 0"><button id="iAbrir" type="button" class="hidden">📂 Abrir pasta dos XMLs</button></p>
+  </section>
+</div>
+
+  <footer class="rodape">Programa local — funciona só neste computador. <a href="#" id="btnEncerrar">Encerrar aplicação</a></footer>
+</main>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-label="Escolher pasta">
+  <div class="dlg">
+    <header>Escolher pasta</header>
+    <div class="cur" id="mCur"></div>
+    <div class="body"><div class="side" id="mSide"></div><div class="list" id="mList"></div></div>
+    <footer>
+      <div style="display:flex;gap:8px"><button id="mUp" type="button">⬆ Subir</button><button id="mNew" type="button">+ Nova pasta</button></div>
+      <div style="display:flex;gap:8px"><button id="mCancel" type="button">Cancelar</button><button id="mOk" type="button" class="primary">Usar esta pasta</button></div>
+    </footer>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const fmt = n => Number(n).toLocaleString("pt-BR");
+let totalLinhas = 0;
+
+function store(k, v){ try{ localStorage.setItem("nfe_"+k, v); }catch(e){} }
+function load(k){ try{ return localStorage.getItem("nfe_"+k); }catch(e){ return null; } }
+function showErr(msg, id){ const e=$(id||"erro"); e.textContent=msg||""; e.style.display=msg?"block":"none"; }
+async function api(url, opt){
+  const r = await fetch(url, opt);
+  let d = {}; try{ d = await r.json(); }catch(e){}
+  if(!r.ok) throw new Error(d.erro || ("Erro "+r.status));
+  return d;
+}
+const post = (url, body) => api(url, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body||{})});
+function sep(p){ return p.endsWith("/")||p.endsWith("\\") ? p : p + (p.includes("\\") ? "\\" : "/"); }
+
+/* ---------- Abas ---------- */
+function aba(qual){
+  const s = qual === "sisgi";
+  $("paneBaixar").classList.toggle("hidden", s); $("paneSisgi").classList.toggle("hidden", !s);
+  $("tabB").classList.toggle("on", !s); $("tabS").classList.toggle("on", s);
+  if(s && !$("iPasta").value) $("iPasta").value = load("ipasta") || $("pasta").value;
+  store("aba", qual);
+}
+$("tabB").onclick = () => aba("baixar"); $("tabS").onclick = () => aba("sisgi");
+
+/* ---------- Planilha ---------- */
+const drop = $("dropArea");
+drop.onclick = () => $("fileInput").click();
+drop.onkeydown = e => { if(e.key==="Enter"||e.key===" "){ e.preventDefault(); $("fileInput").click(); } };
+$("btnTroca").onclick = () => $("fileInput").click();
+["dragenter","dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave","drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", e => { if(e.dataTransfer.files[0]) enviar(e.dataTransfer.files[0]); });
+$("fileInput").onchange = e => { if(e.target.files[0]) enviar(e.target.files[0]); e.target.value=""; };
+
+async function enviar(file){
+  showErr(""); $("lendo").classList.remove("hidden");
+  const fd = new FormData(); fd.append("arquivo", file);
+  try{
+    const d = await api("/api/planilha", {method:"POST", body:fd});
+    totalLinhas = d.total;
+    $("fileName").textContent = d.nome;
+    $("fileMeta").textContent = fmt(d.total) + " linhas de dados";
+    $("coluna").innerHTML = d.colunas.map(c => `<option>${c.replace(/</g,"&lt;")}</option>`).join("");
+    $("coluna").value = d.sugerida;
+    mostrarInfoCol(d);
+    drop.classList.add("hidden"); $("fileInfo").classList.remove("hidden");
+    atualizarResumo();
+  }catch(e){ showErr(e.message); }
+  $("lendo").classList.add("hidden");
+}
+function mostrarInfoCol(d){
+  const pct = d.total ? Math.round(100*d.validas/d.total) : 0;
+  $("colInfo").textContent = `${fmt(d.validas)} de ${fmt(d.total)} linhas têm chave válida (44 dígitos) — ${pct}%.`;
+}
+$("coluna").onchange = async () => {
+  try{ mostrarInfoCol(await api("/api/coluna?nome="+encodeURIComponent($("coluna").value))); }catch(e){ showErr(e.message); }
+};
+function atualizarResumo(){
+  if(!totalLinhas) return;
+  const i = parseInt($("inicio").value)||1;
+  const f = $("fim").value ? Math.min(parseInt($("fim").value), totalLinhas) : totalLinhas;
+  const n = Math.max(f - i + 1, 0);
+  $("resumoLinhas").textContent = `Serão processadas as linhas ${fmt(i)} a ${fmt(f)} (${fmt(n)} notas). A linha 1 é a primeira nota — o cabeçalho não conta. Rode em lotes pequenos para evitar bloqueio do site.`;
+}
+$("inicio").oninput = $("fim").oninput = atualizarResumo;
+
+/* ---------- Seletor de pastas (serve às duas abas) ---------- */
+let pastaAtual = "", paiAtual = null, alvoSeletor = "pasta";
+async function navegar(p){
+  try{
+    const d = await api("/api/pastas?path="+encodeURIComponent(p||""));
+    pastaAtual = d.path; paiAtual = d.pai;
+    $("mCur").textContent = d.path;
+    $("mUp").disabled = !d.pai;
+    $("mSide").innerHTML = d.atalhos.map(a=>`<div class="item" data-p="${encodeURIComponent(a.caminho)}">${a.nome}</div>`).join("");
+    $("mList").innerHTML = d.pastas.length
+      ? d.pastas.map(n=>`<div class="item" data-n="${encodeURIComponent(n)}">📁 ${n.replace(/</g,"&lt;")}</div>`).join("")
+      : '<div class="hint" style="padding:10px">Nenhuma subpasta.</div>';
+  }catch(e){ alert(e.message); }
+}
+$("mSide").onclick = e => { const t=e.target.closest(".item"); if(t) navegar(decodeURIComponent(t.dataset.p)); };
+$("mList").onclick = e => { const t=e.target.closest(".item[data-n]"); if(t) navegar(sep(pastaAtual)+decodeURIComponent(t.dataset.n)); };
+function abrirSeletor(alvo){ alvoSeletor = alvo; $("modal").classList.add("on"); navegar($(alvo).value || ""); }
+$("btnPasta").onclick = () => abrirSeletor("pasta");
+$("btnIPasta").onclick = () => abrirSeletor("iPasta");
+$("mUp").onclick = () => paiAtual && navegar(paiAtual);
+$("mCancel").onclick = () => $("modal").classList.remove("on");
+$("mOk").onclick = () => {
+  $(alvoSeletor).value = pastaAtual; store(alvoSeletor==="pasta" ? "pasta" : "ipasta", pastaAtual);
+  $("modal").classList.remove("on");
+};
+$("mNew").onclick = async () => {
+  const nome = prompt("Nome da nova pasta:");
+  if(!nome) return;
+  try{ const d = await post("/api/pastas/nova", {path:pastaAtual, nome}); navegar(d.path); }
+  catch(e){ alert(e.message); }
+};
+$("pasta").onchange = () => store("pasta", $("pasta").value);
+$("iPasta").onchange = () => store("ipasta", $("iPasta").value);
+$("btnIUsar").onclick = () => { $("iPasta").value = $("pasta").value; store("ipasta", $("pasta").value); };
+
+/* ---------- Acompanhamento genérico (download e SISGI) ---------- */
+const NOMES = {ocioso:["Aguardando",""],rodando:["Em execução",""],parando:["Parando…","warn"],
+  concluido:["Concluído","ok"],parado:["Interrompido","warn"],erro:["Erro","err"]};
+const tempo = s => Math.floor(s/60)+":"+String(s%60).padStart(2,"0");
+
+class Acomp{
+  constructor(ids, url, abrirUrl, falhaCols){
+    this.i = ids; this.url = url; this.abrirUrl = abrirUrl; this.falhaCols = falhaCols;
+    this.desde = 0; this.timer = null;
+  }
+  el(k){ return $(this.i[k]); }
+  iniciar(){
+    this.desde = 0; this.el("con").innerHTML = ""; this.el("card").classList.remove("hidden");
+    this.el("card").scrollIntoView({behavior:"smooth"}); this.polling();
+  }
+  polling(){ clearInterval(this.timer); this.poll(); this.timer = setInterval(()=>this.poll(), 1000); }
+  async poll(){
+    let d; try{ d = await api(this.url+"?desde="+this.desde); }catch(e){ return; }
+    const con = this.el("con"), bottom = con.scrollTop + con.clientHeight >= con.scrollHeight - 30;
+    d.logs.forEach(l => {
+      const div = document.createElement("div"); div.className = l.n;
+      const t = document.createElement("span"); t.className = "t"; t.textContent = l.t;
+      div.append(t, document.createTextNode(l.m)); con.appendChild(div);
+    });
+    this.desde = d.n; if(bottom) con.scrollTop = con.scrollHeight;
+    const [nome, cls] = NOMES[d.status] || [d.status,""];
+    this.el("status").textContent = (d.simulado && d.status!=="ocioso" ? "Simulação · " : "") + nome;
+    this.el("status").className = "pill " + cls;
+    this.el("proc").textContent = fmt(d.processadas); this.el("total").textContent = fmt(d.total);
+    this.el("ok").textContent = fmt(d.baixadas); this.el("ex").textContent = fmt(d.existentes);
+    this.el("inv").textContent = fmt(d.invalidas); this.el("fal").textContent = fmt(d.falhas.length);
+    this.el("tempo").textContent = tempo(d.decorrido);
+    this.el("barra").style.width = (d.total ? Math.min(100, 100*d.processadas/d.total) : 0) + "%";
+    const rodando = d.status==="rodando" || d.status==="parando";
+    this.el("run").disabled = rodando; this.el("stop").classList.toggle("hidden", !rodando);
+    if(!rodando) this.el("stop").disabled = false;
+    this.el("abrir").classList.toggle("hidden", !(d.pasta && !d.simulado && d.status!=="ocioso"));
+    this.el("failsBox").classList.toggle("hidden", !d.falhas.length);
+    if(d.falhas.length){
+      this.el("failsBody").innerHTML = d.falhas.map(f=>`<tr><td>${f.linha}</td><td class="k">${f.chave}</td><td>${f.erro.replace(/</g,"&lt;")}</td></tr>`).join("");
+    }
+    if(!rodando){ clearInterval(this.timer); this.timer = null; }
+    return d;
+  }
+}
+const IDS_B = {status:"status",barra:"barra",proc:"sProc",total:"sTotal",ok:"sOk",ex:"sEx",inv:"sInv",fal:"sFal",
+  tempo:"sTempo",con:"console",failsBox:"failsBox",failsBody:"failsBody",abrir:"btnAbrir",card:"progCard",run:"btnRun",stop:"btnStop"};
+const IDS_S = {status:"iStatus",barra:"iBarra",proc:"iProc",total:"iTotal",ok:"iOk",ex:"iEx",inv:"iInv",fal:"iFal",
+  tempo:"iTempo",con:"iConsole",failsBox:"iFailsBox",failsBody:"iFailsBody",abrir:"iAbrir",card:"iProg",run:"iRun",stop:"iStop"};
+const AB = new Acomp(IDS_B, "/api/status");
+const AS = new Acomp(IDS_S, "/api/sisgi/status");
+
+/* ---------- Execução: download ---------- */
+$("btnRun").onclick = async () => {
+  showErr("");
+  const body = {
+    coluna: $("coluna").value, inicio: $("inicio").value, fim: $("fim").value,
+    pasta: $("pasta").value, simular: $("simular").checked,
+    opcoes: { pausa_min:$("o_pmin").value, pausa_max:$("o_pmax").value, lote_pausa_longa:$("o_lote").value,
+              pausa_longa_min:$("o_lmin").value, pausa_longa_max:$("o_lmax").value, tempo_max_download:$("o_tmax").value }
+  };
+  if(!$("fileInfo").offsetParent){ return showErr("Escolha a planilha primeiro."); }
+  try{
+    await post("/api/iniciar", body);
+    store("inicio",$("inicio").value); store("fim",$("fim").value); store("pasta",$("pasta").value);
+    AB.iniciar();
+  }catch(e){ showErr(e.message); }
+};
+$("btnStop").onclick = async () => { $("btnStop").disabled = true; try{ await post("/api/parar"); }catch(e){ showErr(e.message); } };
+$("btnAbrir").onclick = () => post("/api/abrir-pasta").catch(e=>showErr(e.message));
+$("btnCopiar").onclick = () => {
+  const t = [...document.querySelectorAll("#failsBody td.k")].map(td=>td.textContent).join("\n");
+  navigator.clipboard.writeText(t).then(()=>{ $("btnCopiar").textContent="Copiado!"; setTimeout(()=>$("btnCopiar").textContent="Copiar chaves",1500); });
+};
+
+/* ---------- Execução: importar no SISGI ---------- */
+$("iRun").onclick = async () => {
+  showErr("", "iErro");
+  const body = { pasta:$("iPasta").value, url:$("iUrl").value, mes:$("iMes").value, limite:$("iLimite").value,
+                 lote:$("iLote").value, simular:$("iSimular").checked, reenviar:$("iReenviar").checked };
+  try{
+    await post("/api/sisgi/iniciar", body);
+    store("ipasta",$("iPasta").value); store("iurl",$("iUrl").value);
+    AS.iniciar();
+  }catch(e){ showErr(e.message, "iErro"); }
+};
+$("iStop").onclick = async () => { $("iStop").disabled = true; try{ await post("/api/sisgi/parar"); }catch(e){ showErr(e.message,"iErro"); } };
+$("iAbrir").onclick = () => post("/api/abrir-pasta?de=sisgi").catch(e=>showErr(e.message,"iErro"));
+
+$("btnEncerrar").onclick = async e => {
+  e.preventDefault();
+  if(!confirm("Encerrar o programa? Você precisará abri-lo de novo para usar.")) return;
+  try{ await post("/api/encerrar"); document.body.innerHTML='<div class="wrap" style="text-align:center;padding:60px"><h1>Aplicação encerrada.</h1><p>Você já pode fechar esta aba.</p></div>'; }
+  catch(err){ showErr(err.message); }
+};
+
+/* ---------- Início ---------- */
+(async () => {
+  const p = load("pasta"); if(p) $("pasta").value = p;
+  else try{ const d = await api("/api/pastas"); $("pasta").value = sep(d.path) + "xmls_baixados"; }catch(e){}
+  const i = load("inicio"), f = load("fim"); if(i) $("inicio").value = i; if(f) $("fim").value = f;
+  const ip = load("ipasta"); if(ip) $("iPasta").value = ip;
+  try{ $("iUrl").value = load("iurl") || (await api("/api/sisgi/padrao")).url; }catch(e){}
+  if(load("aba") === "sisgi") aba("sisgi");
+  try{ // reata a uma execução em andamento (ex.: página recarregada)
+    const b = await api("/api/status?desde=0");
+    if(b.status !== "ocioso"){ AB.el("card").classList.remove("hidden"); AB.polling(); }
+    const s = await api("/api/sisgi/status?desde=0");
+    if(s.status !== "ocioso"){ AS.el("card").classList.remove("hidden"); AS.polling(); aba("sisgi"); }
+  }catch(e){}
+})();
+</script>
+</body>
+</html>
