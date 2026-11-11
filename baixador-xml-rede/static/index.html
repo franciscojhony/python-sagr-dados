@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Baixador de XML de NF-e</title>
+<style>
+  :root{
+    --brand:#104376; --brand-dark:#0b2f54; --brand-light:#1a5a9e; --accent:#f0932b;
+    --surface:#f4f7fb; --card-bg:#ffffff; --text-primary:#101418; --text-secondary:#5b6672;
+    --text-muted:#8993a1; --border:#e4e9f0;
+    --shadow-sm:0 2px 8px rgba(16,67,118,0.08); --shadow-md:0 6px 20px rgba(16,67,118,0.14);
+    --shadow-lg:0 10px 30px rgba(16,67,118,0.20);
+    --ok:#13803f; --ok-bg:#e6f5ec; --warn:#a15c00; --warn-bg:#fff3de; --err:#c2271d; --err-bg:#fdeaea; --info-bg:#eaf1fd;
+  }
+  *{ box-sizing:border-box; }
+  html, body{ margin:0; padding:0; }
+  body{ font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--surface);
+    color: var(--text-primary); padding-bottom: 48px; font-size:15px; line-height:1.5; }
+  header.topbar{ background: linear-gradient(135deg, var(--brand) 0%, var(--brand-dark) 100%); color:#fff;
+    padding: 40px 40px 46px; box-shadow: var(--shadow-lg); text-align:center; }
+  header.topbar h1{ margin:0 0 8px; font-size:1.9rem; font-weight:700; letter-spacing:0.2px; }
+  header.topbar p{ margin:0; color: rgba(255,255,255,0.78); font-size:0.98rem; }
+  main{ max-width:1300px; margin:-20px auto 0; padding:0 40px; }
+  section.portfolio{ background: var(--card-bg); border-radius:16px; box-shadow: var(--shadow-lg);
+    padding:40px 44px 48px; margin-bottom:24px; }
+  .portfolio-title{ display:flex; flex-direction:column; align-items:center; gap:10px; margin-bottom:36px; }
+  .portfolio-title h2{ margin:0; display:flex; align-items:center; gap:12px; font-size:1.55rem; font-weight:800; color:var(--brand); }
+  .portfolio-title h2 svg{ width:30px; height:30px; color:var(--brand); }
+  .portfolio-title .underline{ width:200px; height:4px; border-radius:2px; background:var(--accent); }
+  .card-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:24px; }
+  .card{ position:relative; background:var(--card-bg); border:1px solid var(--border); border-left:4px solid var(--brand);
+    border-radius:12px; box-shadow:var(--shadow-sm); padding:26px 26px 28px; height:100%;
+    transition: box-shadow .18s ease, border-left-color .18s ease; }
+  .card:hover, .card:focus-within{ box-shadow:var(--shadow-md); border-left-color:var(--accent); }
+  .card h3{ margin:0 0 14px; display:flex; align-items:center; gap:10px; font-size:1.08rem; font-weight:700; color:var(--brand-dark); }
+  .card h3 svg{ width:22px; height:22px; color:var(--brand); flex:none; }
+  .card p.desc{ margin:0 0 14px; color:var(--text-secondary); font-size:0.92rem; line-height:1.55; }
+
+  label{ display:block; font-size:0.82rem; font-weight:600; color:var(--text-secondary); margin-bottom:4px; }
+  input[type=text], input[type=number], input[type=month], select{ width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px;
+    background:#fff; color:var(--text-primary); font:inherit; }
+  input:focus, select:focus, button:focus-visible{ outline:2px solid var(--brand-light); outline-offset:1px; }
+  .row{ display:flex; gap:12px; flex-wrap:wrap; } .row>*{ flex:1 1 140px; }
+  .hint{ font-size:0.82rem; color:var(--text-muted); margin-top:8px; line-height:1.5; }
+  button{ font:inherit; font-weight:600; cursor:pointer; border-radius:8px; border:1px solid var(--border);
+    background:#fff; color:var(--brand); padding:10px 18px; transition:.15s; }
+  button:hover:not(:disabled){ border-color:var(--brand); box-shadow:var(--shadow-sm); }
+  button:disabled{ opacity:.5; cursor:not-allowed; }
+  button.primary{ background:var(--brand); color:#fff; border-color:var(--brand); }
+  button.primary:hover:not(:disabled){ background:var(--brand-light); border-color:var(--brand-light); }
+  button.danger{ background:var(--err); color:#fff; border-color:var(--err); }
+  .drop{ border:2px dashed var(--border); border-radius:10px; padding:26px 14px; text-align:center; color:var(--text-secondary);
+    cursor:pointer; transition:.15s; font-size:0.92rem; }
+  .drop:hover, .drop.over{ border-color:var(--accent); background:#fff8ee; }
+  .drop b{ color:var(--brand); }
+  .file-ok{ display:flex; align-items:center; justify-content:space-between; gap:12px; background:var(--ok-bg);
+    border-radius:8px; padding:10px 12px; margin-bottom:12px; }
+  .file-ok .nm{ font-weight:700; word-break:break-all; font-size:0.92rem; } .file-ok small{ color:var(--text-secondary); }
+  .file-ok button{ padding:6px 12px; font-size:0.82rem; }
+  .pathrow{ display:flex; gap:8px; } .pathrow input{ flex:1; min-width:0; }
+
+  .toolbar{ margin-top:30px; border-top:1px solid var(--border); padding-top:26px; }
+  details{ margin:0 0 16px; } summary{ cursor:pointer; color:var(--brand); font-weight:600; font-size:0.9rem; }
+  details .row{ margin-top:14px; }
+  .notice{ background:var(--info-bg); border-left:4px solid var(--brand-light); border-radius:8px; padding:12px 16px;
+    font-size:0.9rem; color:var(--text-secondary); margin-bottom:16px; }
+  .err{ background:var(--err-bg); color:var(--err); border-radius:8px; padding:10px 14px; margin-bottom:14px; display:none; font-weight:600; }
+  .actions{ display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+  .chk{ display:flex; gap:8px; align-items:center; font-size:0.9rem; color:var(--text-secondary); margin:0; font-weight:500; }
+  .chk input{ width:auto; }
+  .pill{ font-size:0.75rem; font-weight:700; padding:4px 12px; border-radius:999px; background:var(--info-bg); color:var(--brand); }
+  .pill.ok{ background:var(--ok-bg); color:var(--ok); } .pill.warn{ background:var(--warn-bg); color:var(--warn); } .pill.err{ background:var(--err-bg); color:var(--err); }
+  .status-line{ display:flex; justify-content:center; margin:-20px 0 24px; }
+  .bar{ height:10px; background:var(--border); border-radius:99px; overflow:hidden; margin:0 0 20px; }
+  .bar>div{ height:100%; width:0; background:linear-gradient(90deg,var(--brand),var(--brand-light)); transition:width .4s; }
+  .stats{ display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:16px; margin-bottom:20px; }
+  .stat{ background:var(--card-bg); border:1px solid var(--border); border-left:4px solid var(--brand); border-radius:12px;
+    box-shadow:var(--shadow-sm); padding:14px 16px; }
+  .stat b{ display:block; font-size:1.6rem; color:var(--brand-dark); font-variant-numeric:tabular-nums; line-height:1.2; }
+  .stat span{ font-size:0.8rem; color:var(--text-secondary); }
+  .stat.k{ border-left-color:var(--ok); } .stat.k b{ color:var(--ok); }
+  .stat.f{ border-left-color:var(--err); } .stat.f b{ color:var(--err); }
+  .console{ background:#0f1b2b; color:#d7dee9; border-radius:12px; padding:14px 16px; height:280px; overflow:auto;
+    font:12.5px/1.6 ui-monospace,Consolas,Menlo,monospace; white-space:pre-wrap; word-break:break-all; box-shadow:var(--shadow-sm); }
+  .console .ok{ color:#5fd68f; } .console .erro{ color:#ff8b82; } .console .aviso{ color:#f6c667; }
+  .console .t{ opacity:.5; margin-right:8px; }
+  .fails{ margin-top:20px; font-size:0.88rem; color:var(--text-secondary); }
+  .fails table{ width:100%; border-collapse:collapse; margin-top:8px; }
+  .fails td, .fails th{ padding:7px 10px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top; }
+  .fails th{ color:var(--brand-dark); } .fails td.k{ font-family:ui-monospace,Consolas,monospace; word-break:break-all; }
+  footer.rodape{ text-align:center; color:var(--text-muted); font-size:0.82rem; margin-top:8px; }
+  footer.rodape a{ color:var(--text-muted); }
+  .hidden{ display:none!important; }
+
+  /* seletor de pastas */
+  .modal{ position:fixed; inset:0; background:rgba(11,47,84,.55); display:none; align-items:center; justify-content:center; padding:16px; z-index:10; }
+  .modal.on{ display:flex; }
+  .dlg{ background:#fff; border-radius:16px; width:min(660px,100%); max-height:86vh; display:flex; flex-direction:column; box-shadow:var(--shadow-lg); overflow:hidden; }
+  .dlg header{ padding:16px 22px; background:linear-gradient(135deg,var(--brand),var(--brand-dark)); color:#fff; font-weight:700; }
+  .dlg .cur{ padding:10px 22px; font-size:0.82rem; color:var(--text-secondary); word-break:break-all; border-bottom:1px solid var(--border); }
+  .dlg .body{ display:flex; min-height:240px; flex:1; overflow:hidden; }
+  .dlg .side{ width:150px; border-right:1px solid var(--border); padding:8px; overflow:auto; font-size:0.82rem; background:var(--surface); }
+  .dlg .list{ flex:1; overflow:auto; padding:6px; }
+  .item{ padding:7px 10px; border-radius:6px; cursor:pointer; font-size:0.9rem; word-break:break-all; }
+  .item:hover{ background:var(--info-bg); color:var(--brand-dark); }
+  .dlg footer{ display:flex; gap:8px; justify-content:space-between; padding:14px 22px; border-top:1px solid var(--border); flex-wrap:wrap; }
+
+
+  .tabs{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:22px; }
+  .tabs button{ background:rgba(255,255,255,.12); color:#fff; border:1px solid rgba(255,255,255,.28); padding:9px 22px; border-radius:999px; font-weight:600; }
+  .tabs button:hover:not(:disabled){ background:rgba(255,255,255,.22); border-color:#fff; box-shadow:none; }
+  .tabs button.on{ background:#fff; color:var(--brand); border-color:#fff; }
+  .row.full>*{ flex:1 1 100%; }
+  .mt{ margin-top:14px; }
+  .btn-sm{ padding:6px 12px; font-size:0.82rem; margin-top:10px; }
+
+
+  .split{ margin-top:14px; padding-top:14px; border-top:1px dashed var(--border); }
+  .split .row{ align-items:flex-end; }
+  .split select{ padding:8px 10px; }
+  .vagas{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:16px; }
+  .chipv{ font-size:0.8rem; font-weight:700; padding:5px 12px; border-radius:999px; background:var(--info-bg); color:var(--brand); }
+  .chipv.cheio{ background:var(--err-bg); color:var(--err); }
+  .outros{ width:100%; font-size:0.86rem; color:var(--text-secondary); }
+  .outros .o{ display:flex; justify-content:space-between; gap:10px; padding:6px 10px; border-left:4px solid var(--accent); background:#fffaf2; border-radius:6px; margin-top:6px; }
+  .ro{ background:var(--surface); border:1px dashed var(--border); border-radius:8px; padding:10px 12px; font-size:0.9rem; word-break:break-all; color:var(--text-primary); }
+
+  @media (max-width: 900px){ .card-grid{ grid-template-columns:repeat(2,1fr); } }
+  @media (max-width: 720px){
+    header.topbar{ padding:30px 20px 36px; } main{ padding:0 16px; }
+    section.portfolio{ padding:30px 20px 34px; } .card-grid{ grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <h1>Baixador de XML de NF-e</h1>
+  <p>Download de XML pela chave de acesso &middot; consultadanfe.com &middot; vários usuários ao mesmo tempo &middot; o Chrome abre no seu computador</p>
+</header>
+
+<main>
+  <section class="portfolio">
+    <div class="portfolio-title">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"></path></svg>
+        Configuração do Download
+      </h2>
+      <div class="underline"></div>
+    </div>
+
+    <div class="vagas">
+      <span class="chipv" id="chipVagas">Servidor: —</span>
+      <span class="chipv" id="chipAgente">Agente neste computador: —</span>
+      <a href="/agente.zip" id="lnkAgente" class="chipv" style="text-decoration:none">⬇ Baixar o Agente</a>
+      <div class="outros" id="outros"></div>
+    </div>
+
+    <div class="card-grid">
+      <div class="card">
+        <h3>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"></path><path d="M14 3v5h5M9 13h6M9 17h6"></path></svg>
+          1. Sua planilha
+        </h3>
+        <div id="dropArea" class="drop" tabindex="0" role="button">
+          <b>Clique para escolher</b> ou arraste o arquivo aqui<br><small>do seu computador &middot; .xlsx, .xlsm ou .csv</small>
+        </div>
+        <input id="fileInput" type="file" accept=".xlsx,.xlsm,.csv" class="hidden">
+        <div id="fileInfo" class="hidden">
+          <div class="file-ok">
+            <div><div class="nm" id="fileName"></div><small id="fileMeta"></small></div>
+            <button id="btnTroca" type="button">Trocar</button>
+          </div>
+          <label for="coluna">Coluna da chave de acesso (44 dígitos)</label>
+          <select id="coluna"></select>
+          <div class="hint" id="colInfo"></div>
+        </div>
+        <div class="hint hidden" id="lendo">Lendo a planilha… planilhas grandes podem levar alguns segundos.</div>
+      </div>
+
+      <div class="card">
+        <h3>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"></path></svg>
+          2. Suas linhas
+        </h3>
+        <div class="row">
+          <div><label for="inicio">Linha inicial</label><input id="inicio" type="number" min="1" value="1"></div>
+          <div><label for="fim">Linha final</label><input id="fim" type="number" min="1" placeholder="até o fim"></div>
+        </div>
+        <div class="hint" id="resumoLinhas">A linha 1 é a primeira nota (o cabeçalho não conta).</div>
+      </div>
+
+      <div class="card">
+        <h3>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"></path></svg>
+          3. Destino e identificação
+        </h3>
+        <label for="nome">Seu nome (aparece para os outros usuários)</label>
+        <input id="nome" type="text" maxlength="40" placeholder="ex.: Maria">
+        <label class="mt">Pasta de destino (no servidor)</label>
+        <div id="pastaFixa" class="ro">—</div>
+        <div class="pathrow hidden" id="pastaLivre">
+          <input id="pasta" type="text" placeholder="Caminho da pasta no servidor">
+          <button id="btnPasta" type="button">Procurar…</button>
+        </div>
+        <div class="hint">Notas já baixadas (&lt;chave&gt;.xml) são puladas, inclusive as baixadas por outra pessoa.</div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <details>
+        <summary>Opções avançadas (pausas entre as notas)</summary>
+        <div class="row">
+          <div><label>Pausa entre notas — mín. (s)</label><input id="o_pmin" type="number" min="0" value="5"></div>
+          <div><label>Pausa entre notas — máx. (s)</label><input id="o_pmax" type="number" min="0" value="9"></div>
+          <div><label>Pausa longa a cada N notas</label><input id="o_lote" type="number" min="0" value="10"></div>
+        </div>
+        <div class="row">
+          <div><label>Pausa longa — mín. (s)</label><input id="o_lmin" type="number" min="0" value="30"></div>
+          <div><label>Pausa longa — máx. (s)</label><input id="o_lmax" type="number" min="0" value="60"></div>
+          <div><label>Tempo máx. do download (s)</label><input id="o_tmax" type="number" min="5" value="40"></div>
+        </div>
+      </details>
+      <div class="notice" id="aviso">
+        <b>Antes de executar, deixe o Agente aberto neste computador</b> (<code>iniciar-agente.bat</code>; se ainda não tem, use
+        "Baixar o Agente" acima). Ao clicar em Executar, o <b>Google Chrome abre no seu computador</b>; se o site pedir a
+        verificação anti-robô, resolva você mesmo na janela. Os XMLs são enviados automaticamente para a pasta do servidor.
+        Quanto mais pessoas baixando ao mesmo tempo, maior a chance de bloqueio — mantenha as pausas.
+      </div>
+      <div class="err" id="erro"></div>
+      <div class="actions">
+        <button id="btnRun" class="primary" type="button">▶ Executar</button>
+        <button id="btnStop" class="danger hidden" type="button">■ Parar</button>
+        <label class="chk"><input id="simular" type="checkbox"> Apenas simular (não abre o Chrome nem baixa)</label>
+      </div>
+    </div>
+  </section>
+
+  <section class="portfolio hidden" id="progCard">
+    <div class="portfolio-title">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg>
+        Seu andamento
+      </h2>
+      <div class="underline"></div>
+    </div>
+    <div class="status-line"><span class="pill" id="status">—</span></div>
+    <div class="notice hidden" id="aguardaAg" style="margin-bottom:20px">
+      <b>Aguardando o Agente neste computador…</b> Abra o <code>iniciar-agente.bat</code>. Assim que ele se conectar,
+      o Chrome abre aqui e o download começa. Se você ainda não tem o Agente, use o link "Baixar o Agente" no topo da página.
+    </div>
+    <div class="bar"><div id="barra"></div></div>
+    <div class="stats">
+      <div class="stat"><b id="sProc">0</b><span>processadas / <span id="sTotal">0</span></span></div>
+      <div class="stat k"><b id="sOk">0</b><span>baixadas</span></div>
+      <div class="stat"><b id="sEx">0</b><span>já existiam</span></div>
+      <div class="stat"><b id="sInv">0</b><span>chaves inválidas</span></div>
+      <div class="stat f"><b id="sFal">0</b><span>falhas</span></div>
+      <div class="stat"><b id="sTempo">0:00</b><span>tempo decorrido</span></div>
+    </div>
+    <div class="console" id="console" aria-live="polite"></div>
+    <div class="fails hidden" id="failsBox">
+      <b>Chaves que falharam</b> — execute de novo o mesmo intervalo para tentar só essas.
+      <table><thead><tr><th>Linha</th><th>Chave</th><th>Erro</th></tr></thead><tbody id="failsBody"></tbody></table>
+      <p><button id="btnCopiar" type="button">Copiar chaves</button></p>
+    </div>
+    <p class="actions" style="margin:18px 0 0"><button id="btnAbrir" type="button" class="hidden">📂 Abrir pasta dos XMLs (servidor)</button></p>
+  </section>
+
+  <footer class="rodape">Servidor do Baixador de XML. <a href="#" id="btnEncerrar" class="hidden">Encerrar aplicação</a></footer>
+</main>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-label="Escolher pasta">
+  <div class="dlg">
+    <header>Escolher pasta no servidor</header>
+    <div class="cur" id="mCur"></div>
+    <div class="body"><div class="side" id="mSide"></div><div class="list" id="mList"></div></div>
+    <footer>
+      <div style="display:flex;gap:8px"><button id="mUp" type="button">⬆ Subir</button><button id="mNew" type="button">+ Nova pasta</button></div>
+      <div style="display:flex;gap:8px"><button id="mCancel" type="button">Cancelar</button><button id="mOk" type="button" class="primary">Usar esta pasta</button></div>
+    </footer>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const fmt = n => Number(n).toLocaleString("pt-BR");
+let totalLinhas = 0, desde = 0, CFG = {max_usuarios:5, escolher_pasta:false, servidor:false};
+
+function store(k, v){ try{ localStorage.setItem("nfe_"+k, v); }catch(e){} }
+function load(k){ try{ return localStorage.getItem("nfe_"+k); }catch(e){ return null; } }
+function showErr(msg){ const e=$("erro"); e.textContent=msg||""; e.style.display=msg?"block":"none"; }
+async function api(url, opt){
+  const r = await fetch(url, opt);
+  let d = {}; try{ d = await r.json(); }catch(e){}
+  if(!r.ok) throw new Error(d.erro || ("Erro "+r.status));
+  return d;
+}
+const post = (url, body) => api(url, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body||{})});
+function sep(p){ return p.endsWith("/")||p.endsWith("\\") ? p : p + (p.includes("\\") ? "\\" : "/"); }
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------- Planilha ---------- */
+const drop = $("dropArea");
+drop.onclick = () => $("fileInput").click();
+drop.onkeydown = e => { if(e.key==="Enter"||e.key===" "){ e.preventDefault(); $("fileInput").click(); } };
+$("btnTroca").onclick = () => $("fileInput").click();
+["dragenter","dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave","drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", e => { if(e.dataTransfer.files[0]) enviar(e.dataTransfer.files[0]); });
+$("fileInput").onchange = e => { if(e.target.files[0]) enviar(e.target.files[0]); e.target.value=""; };
+
+async function enviar(file){
+  showErr(""); $("lendo").classList.remove("hidden");
+  const fd = new FormData(); fd.append("arquivo", file);
+  try{
+    const d = await api("/api/planilha", {method:"POST", body:fd});
+    totalLinhas = d.total;
+    $("fileName").textContent = d.nome;
+    $("fileMeta").textContent = fmt(d.total) + " linhas de dados";
+    $("coluna").innerHTML = d.colunas.map(c => `<option>${esc(c)}</option>`).join("");
+    $("coluna").value = d.sugerida;
+    mostrarInfoCol(d);
+    drop.classList.add("hidden"); $("fileInfo").classList.remove("hidden");
+    atualizarResumo();
+  }catch(e){ showErr(e.message); }
+  $("lendo").classList.add("hidden");
+}
+function mostrarInfoCol(d){
+  const pct = d.total ? Math.round(100*d.validas/d.total) : 0;
+  $("colInfo").textContent = `${fmt(d.validas)} de ${fmt(d.total)} linhas têm chave válida (44 dígitos) — ${pct}%.`;
+}
+$("coluna").onchange = async () => {
+  try{ mostrarInfoCol(await api("/api/coluna?nome="+encodeURIComponent($("coluna").value))); }catch(e){ showErr(e.message); }
+};
+function atualizarResumo(){
+  if(!totalLinhas) return;
+  const i = parseInt($("inicio").value)||1;
+  const f = $("fim").value ? Math.min(parseInt($("fim").value), totalLinhas) : totalLinhas;
+  const n = Math.max(f - i + 1, 0);
+  $("resumoLinhas").textContent = `Serão processadas as linhas ${fmt(i)} a ${fmt(f)} (${fmt(n)} notas). A linha 1 é a primeira nota — o cabeçalho não conta.`;
+}
+$("inicio").oninput = $("fim").oninput = atualizarResumo;
+
+/* ---------- Seletor de pastas (só se o servidor permitir) ---------- */
+let pastaAtual = "", paiAtual = null;
+async function navegar(p){
+  try{
+    const d = await api("/api/pastas?path="+encodeURIComponent(p||""));
+    pastaAtual = d.path; paiAtual = d.pai;
+    $("mCur").textContent = d.path; $("mUp").disabled = !d.pai;
+    $("mSide").innerHTML = d.atalhos.map(a=>`<div class="item" data-p="${encodeURIComponent(a.caminho)}">${esc(a.nome)}</div>`).join("");
+    $("mList").innerHTML = d.pastas.length
+      ? d.pastas.map(n=>`<div class="item" data-n="${encodeURIComponent(n)}">📁 ${esc(n)}</div>`).join("")
+      : '<div class="hint" style="padding:10px">Nenhuma subpasta.</div>';
+  }catch(e){ alert(e.message); }
+}
+$("mSide").onclick = e => { const t=e.target.closest(".item"); if(t) navegar(decodeURIComponent(t.dataset.p)); };
+$("mList").onclick = e => { const t=e.target.closest(".item[data-n]"); if(t) navegar(sep(pastaAtual)+decodeURIComponent(t.dataset.n)); };
+$("btnPasta").onclick = () => { $("modal").classList.add("on"); navegar($("pasta").value || ""); };
+$("mUp").onclick = () => paiAtual && navegar(paiAtual);
+$("mCancel").onclick = () => $("modal").classList.remove("on");
+$("mOk").onclick = () => { $("pasta").value = pastaAtual; store("pasta", pastaAtual); $("modal").classList.remove("on"); };
+$("mNew").onclick = async () => {
+  const nome = prompt("Nome da nova pasta:"); if(!nome) return;
+  try{ const d = await post("/api/pastas/nova", {path:pastaAtual, nome}); navegar(d.path); }catch(e){ alert(e.message); }
+};
+
+/* ---------- Execução ---------- */
+$("btnRun").onclick = async () => {
+  showErr("");
+  const body = {
+    coluna: $("coluna").value, inicio: $("inicio").value, fim: $("fim").value,
+    nome: $("nome").value, pasta: $("pasta").value, simular: $("simular").checked,
+    opcoes: { pausa_min:$("o_pmin").value, pausa_max:$("o_pmax").value, lote_pausa_longa:$("o_lote").value,
+              pausa_longa_min:$("o_lmin").value, pausa_longa_max:$("o_lmax").value, tempo_max_download:$("o_tmax").value }
+  };
+  if(!$("fileInfo").offsetParent){ return showErr("Escolha a planilha primeiro."); }
+  try{
+    await post("/api/iniciar", body);
+    store("nome",$("nome").value);
+    desde = 0; $("console").innerHTML = ""; $("progCard").classList.remove("hidden");
+    $("progCard").scrollIntoView({behavior:"smooth"});
+    poll();
+  }catch(e){ showErr(e.message); }
+};
+$("btnStop").onclick = async () => { $("btnStop").disabled = true; try{ await post("/api/parar"); }catch(e){ showErr(e.message); } };
+$("btnAbrir").onclick = () => post("/api/abrir-pasta").catch(e=>showErr(e.message));
+$("btnCopiar").onclick = () => {
+  const t = [...document.querySelectorAll("#failsBody td.k")].map(td=>td.textContent).join("\n");
+  navigator.clipboard.writeText(t).then(()=>{ $("btnCopiar").textContent="Copiado!"; setTimeout(()=>$("btnCopiar").textContent="Copiar chaves",1500); });
+};
+$("btnEncerrar").onclick = async e => {
+  e.preventDefault();
+  if(!confirm("Encerrar o programa? Todos os usuários perderão o acesso.")) return;
+  try{ await post("/api/encerrar"); document.body.innerHTML='<div style="text-align:center;padding:60px"><h1>Aplicação encerrada.</h1><p>Você já pode fechar esta aba.</p></div>'; }
+  catch(err){ showErr(err.message); }
+};
+
+/* ---------- Acompanhamento (consulta o servidor continuamente) ---------- */
+const NOMES = {ocioso:["Aguardando",""],rodando:["Em execução",""],parando:["Parando…","warn"],
+  concluido:["Concluído","ok"],parado:["Interrompido","warn"],erro:["Erro","err"]};
+const tempo = s => Math.floor(s/60)+":"+String(s%60).padStart(2,"0");
+let timer = null;
+async function poll(){
+  let d; try{ d = await api("/api/status?desde="+desde); }catch(e){ return; }
+  if(d.status !== "ocioso") $("progCard").classList.remove("hidden");
+  const con = $("console"), bottom = con.scrollTop + con.clientHeight >= con.scrollHeight - 30;
+  d.logs.forEach(l => {
+    const div = document.createElement("div"); div.className = l.n;
+    const t = document.createElement("span"); t.className = "t"; t.textContent = l.t;
+    div.append(t, document.createTextNode(l.m)); con.appendChild(div);
+  });
+  desde = d.n; if(bottom) con.scrollTop = con.scrollHeight;
+  const [nome, cls] = NOMES[d.status] || [d.status,""];
+  const aguardando = d.agente === "aguardando";
+  $("status").textContent = aguardando ? "Aguardando o Agente" : ((d.simulado && d.status!=="ocioso" ? "Simulação · " : "") + nome);
+  $("status").className = "pill " + (aguardando ? "warn" : cls);
+  $("aguardaAg").classList.toggle("hidden", !aguardando);
+  $("sProc").textContent = fmt(d.processadas); $("sTotal").textContent = fmt(d.total);
+  $("sOk").textContent = fmt(d.baixadas); $("sEx").textContent = fmt(d.existentes);
+  $("sInv").textContent = fmt(d.invalidas); $("sFal").textContent = fmt(d.falhas.length);
+  $("sTempo").textContent = tempo(d.decorrido);
+  $("barra").style.width = (d.total ? Math.min(100, 100*d.processadas/d.total) : 0) + "%";
+  const rodando = d.status==="rodando" || d.status==="parando";
+  $("btnRun").disabled = rodando; $("btnStop").classList.toggle("hidden", !rodando);
+  if(!rodando) $("btnStop").disabled = false;
+  $("btnAbrir").classList.toggle("hidden", !(CFG.servidor && d.status!=="ocioso" && !d.simulado));
+  $("failsBox").classList.toggle("hidden", !d.falhas.length);
+  if(d.falhas.length){
+    $("failsBody").innerHTML = d.falhas.map(f=>`<tr><td>${f.linha}</td><td class="k">${f.chave}</td><td>${esc(f.erro)}</td></tr>`).join("");
+  }
+  // o Agente deste computador está ligado?
+  $("chipAgente").textContent = "Agente neste computador: " + (d.agente_online ? "conectado ✓" : "não detectado");
+  $("chipAgente").classList.toggle("cheio", !d.agente_online);
+  // vagas e quem está usando
+  const usados = d.max_usuarios - d.vagas;
+  $("chipVagas").textContent = `Servidor: ${usados} de ${d.max_usuarios} em uso`;
+  $("chipVagas").classList.toggle("cheio", d.vagas === 0);
+  $("outros").innerHTML = d.outros.map(o =>
+    `<div class="o"><span><b>${esc(o.nome)}</b> — linhas ${fmt(o.inicio)} a ${fmt(o.fim)}</span><span>${fmt(o.processadas)} / ${fmt(o.total)}</span></div>`).join("");
+}
+
+/* ---------- Início ---------- */
+(async () => {
+  try{ CFG = await api("/api/config"); }catch(e){}
+  $("pastaFixa").textContent = CFG.pasta || "—";
+  $("pastaFixa").classList.toggle("hidden", !!CFG.escolher_pasta);
+  $("pastaLivre").classList.toggle("hidden", !CFG.escolher_pasta);
+  if(CFG.escolher_pasta) $("pasta").value = load("pasta") || CFG.pasta || "";
+  $("btnEncerrar").classList.toggle("hidden", !CFG.servidor);
+  $("nome").value = load("nome") || CFG.nome || "";
+  poll(); timer = setInterval(poll, 1500);
+})();
+</script>
+</body>
+</html>
