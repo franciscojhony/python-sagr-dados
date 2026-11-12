@@ -343,6 +343,8 @@ def main():
         except ErroServidor as e:
             if not avisou:
                 print(f"  {time.strftime('%H:%M:%S')} Servidor indisponível ({e}). Tentando de novo…")
+                print(f"  Se o IP do servidor mudou, corrija o arquivo {BASE / 'servidor.txt'}")
+                print("  (ex.: 192.168.1.25:8765) e abra o Agente de novo.")
                 avisou = True
             time.sleep(5)
             continue

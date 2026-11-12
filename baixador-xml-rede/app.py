@@ -57,6 +57,12 @@ PASTA_XML = os.environ.get("NFE_PASTA_XML", r"C:\Users\89821491120\xmls_baixados
 # False = somente este computador acessa (http://127.0.0.1:8765)   ← uso local, mais seguro
 ACESSO_PELA_REDE = True
 
+# IP DESTE computador (o servidor) na rede. É o endereço que os Agentes usam para se conectar.
+# Ao trocar de computador ou de IP, altere SÓ aqui (ou na variável de ambiente NFE_IP_SERVIDOR).
+# Para descobrir o IP: abra o Prompt de Comando e digite  ipconfig  (veja "Endereço IPv4").
+# Deixe vazio ("") para detectar automaticamente.
+IP_SERVIDOR = os.environ.get("NFE_IP_SERVIDOR", "10.112.51.207").strip()
+
 # False = todos usam a PASTA_XML acima, e ninguém navega nas pastas do servidor (recomendado).
 # True  = cada pessoa pode escolher qualquer pasta do servidor (menos seguro numa rede).
 PERMITIR_ESCOLHER_PASTA = False
@@ -697,7 +703,7 @@ def vigia():
 @app.get("/agente.zip")
 def agente_zip():
     """Gera o pacote do Agente já com o endereço deste servidor preenchido."""
-    host = request.host
+    host = endereco_servidor() or request.host
     if host.split(":")[0] in ("127.0.0.1", "localhost", "[::1]"):
         ips = meus_ips()
         if ips:
@@ -744,6 +750,32 @@ def meus_ips():
     return sorted(ips)
 
 
+def endereco_servidor():
+    """'IP:PORTA' definido em IP_SERVIDOR (vazio se não definido)."""
+    if not IP_SERVIDOR:
+        return ""
+    ip = IP_SERVIDOR.replace("http://", "").rstrip("/")
+    return ip if ":" in ip else f"{ip}:{PORT}"
+
+
+def atualizar_servidor_txt():
+    """Mantém agente/servidor.txt com o IP atual (usado pelo Agente rodado direto desta pasta)."""
+    end = endereco_servidor()
+    if not end and ACESSO_PELA_REDE:
+        ips = meus_ips()
+        end = f"{ips[0]}:{PORT}" if ips else ""
+    if not end:
+        return
+    arq = BASE / "agente" / "servidor.txt"
+    try:
+        atual = arq.read_text(encoding="utf-8").strip() if arq.exists() else ""
+        if atual != end:
+            arq.write_text(end + "\n", encoding="utf-8")
+            print(f" agente/servidor.txt atualizado: {atual or '(vazio)'} -> {end}")
+    except OSError as e:
+        print(f" Não consegui atualizar agente/servidor.txt: {e}")
+
+
 def main():
     # O navegador DESTE computador sempre abre em 127.0.0.1.
     # (Não use HOST aqui: "0.0.0.0" serve para escutar, não para ser aberto no navegador.)
@@ -752,13 +784,17 @@ def main():
     print(" Baixador de XML de NF-e — servidor (os Chromes abrem nos computadores dos usuários)")
     print(f" Neste computador:  {url}")
     if ACESSO_PELA_REDE:
-        for ip in meus_ips():
-            print(f" Outros computadores: http://{ip}:{PORT}/")
+        if endereco_servidor():
+            print(f" Outros computadores: http://{endereco_servidor()}/   (IP_SERVIDOR)")
+        else:
+            for ip in meus_ips():
+                print(f" Outros computadores: http://{ip}:{PORT}/")
         print(" ATENÇÃO: sem senha. Use só em rede confiável.")
     print(f" Usuários simultâneos: até {MAX_USUARIOS}")
     print(f" XMLs salvos em: {os.path.abspath(PASTA_XML)}")
     print(f" Pacote do Agente para os usuários: http://<IP>:{PORT}/agente.zip")
     print(" Para encerrar: feche esta janela (ou use o botão 'Encerrar' na página, no servidor).")
+    atualizar_servidor_txt()
     print("=" * 66)
     threading.Thread(target=vigia, daemon=True).start()
     if os.environ.get("NFE_NO_BROWSER") != "1":
